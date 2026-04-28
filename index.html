@@ -88,7 +88,10 @@ let CW, CH, GRID_W, GRID_H, CELL_W, CELL_H;
 function sizeCanvas() {
   const maxW = Math.min(window.innerWidth - 16, 480);
   CW = maxW;
-  CH = Math.round(maxW * (480/520));
+  // Reserve space for topbar (~36px), bottombar (~36px), dpad (~176px), wrap padding (~24px)
+  const availH = window.innerHeight - 272;
+  const minH = Math.round(maxW * (480/520));
+  CH = Math.round(Math.max(minH, Math.min(availH, maxW * 2)));
   GRID_W = 22;
   GRID_H = Math.round(GRID_W * (CH/CW));
   CELL_W = CW / GRID_W;
