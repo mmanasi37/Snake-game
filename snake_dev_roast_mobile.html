@@ -1,0 +1,352 @@
+
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  #wrap { display: flex; flex-direction: column; align-items: center; padding: 0.75rem 0; font-family: var(--font-mono); width: 100%; }
+  #topbar { width: 100%; max-width: 480px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding: 0 4px; }
+  .stat-pill { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 99px; padding: 3px 12px; font-size: 12px; color: var(--color-text-secondary); }
+  .stat-pill strong { color: var(--color-text-primary); font-weight: 500; }
+  #level-pills { display: flex; gap: 5px; }
+  .lvl-btn { padding: 3px 11px; font-size: 11px; font-family: var(--font-mono); border-radius: 99px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-secondary); cursor: pointer; touch-action: manipulation; }
+  .lvl-btn.active.l1 { border-color: #1D9E75; color: #0F6E56; font-weight: 500; }
+  .lvl-btn.active.l2 { border-color: #BA7517; color: #854F0B; font-weight: 500; }
+  .lvl-btn.active.l3 { border-color: #E24B4A; color: #A32D2D; font-weight: 500; }
+  #game-area { position: relative; }
+  canvas { border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); display: block; }
+  #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--border-radius-md); background: rgba(0,0,0,0.6); }
+  #pause-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--border-radius-md); background: rgba(0,0,0,0.5); }
+  #pause-label { font-size: 20px; font-weight: 500; color: #fff; letter-spacing: 2px; margin-bottom: 6px; }
+  #pause-sub { font-size: 11px; color: rgba(255,255,255,0.5); }
+  #roast { font-size: 13px; color: #ff8080; text-align: center; max-width: 86%; line-height: 1.5; font-weight: 500; margin-bottom: 4px; }
+  #sub-roast { font-size: 11px; color: rgba(255,255,255,0.5); text-align: center; max-width: 82%; margin-bottom: 14px; }
+  #score-big { font-size: 32px; font-weight: 500; color: #fff; margin-bottom: 2px; }
+  .olay-btn { padding: 8px 20px; font-size: 12px; font-family: var(--font-mono); cursor: pointer; border-radius: var(--border-radius-md); border: 0.5px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.12); color: #fff; touch-action: manipulation; }
+  .olay-btn:active { background: rgba(255,255,255,0.22); }
+  #bottombar { width: 100%; max-width: 480px; display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding: 0 4px; }
+  #controls-hint { font-size: 10px; color: var(--color-text-tertiary); }
+  #pause-btn { padding: 4px 14px; font-size: 11px; font-family: var(--font-mono); border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-secondary); cursor: pointer; display: flex; align-items: center; gap: 5px; touch-action: manipulation; }
+  #pause-btn svg { width: 11px; height: 11px; fill: currentColor; }
+  #dpad { display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(3, 52px); gap: 4px; margin-top: 12px; }
+  .dpad-btn { width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: var(--color-background-secondary); cursor: pointer; touch-action: manipulation; user-select: none; font-size: 18px; color: var(--color-text-secondary); }
+  .dpad-btn:active { background: var(--color-background-primary); border-color: var(--color-border-primary); color: var(--color-text-primary); }
+  .dpad-empty { width: 52px; height: 52px; }
+  #dpad-center { background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); }
+</style>
+<h2 class="sr-only">Snake game with difficulty levels, pause, touch d-pad, and sarcastic developer death messages</h2>
+<div id="wrap">
+  <div id="topbar">
+    <div class="stat-pill">score <strong id="score">0</strong></div>
+    <div id="level-pills">
+      <button class="lvl-btn active l1" data-lvl="1">easy</button>
+      <button class="lvl-btn l2" data-lvl="2">med</button>
+      <button class="lvl-btn l3" data-lvl="3">hard</button>
+    </div>
+    <div class="stat-pill">best <strong id="best">0</strong></div>
+  </div>
+
+  <div id="game-area">
+    <canvas id="canvas"></canvas>
+    <div id="overlay">
+      <div id="roast"></div>
+      <div id="score-big"></div>
+      <div id="sub-roast"></div>
+      <button class="olay-btn" id="start-btn">[ start game ]</button>
+    </div>
+    <div id="pause-overlay">
+      <div id="pause-label">// paused</div>
+      <div id="pause-sub">tap resume or press P</div>
+    </div>
+  </div>
+
+  <div id="bottombar">
+    <div id="controls-hint">swipe or use d-pad below</div>
+    <button id="pause-btn">
+      <svg id="pause-icon" viewBox="0 0 12 12"><rect x="1" y="1" width="3.5" height="10" rx="1"/><rect x="7.5" y="1" width="3.5" height="10" rx="1"/></svg>
+      <svg id="play-icon" viewBox="0 0 12 12" style="display:none"><polygon points="2,1 11,6 2,11"/></svg>
+      <span id="pause-text">pause</span>
+    </button>
+  </div>
+
+  <div id="dpad">
+    <div class="dpad-empty"></div>
+    <div class="dpad-btn" id="btn-up">&#9650;</div>
+    <div class="dpad-empty"></div>
+    <div class="dpad-btn" id="btn-left">&#9664;</div>
+    <div class="dpad-btn" id="dpad-center" style="font-size:11px;color:var(--color-text-tertiary);">D</div>
+    <div class="dpad-btn" id="btn-right">&#9654;</div>
+    <div class="dpad-empty"></div>
+    <div class="dpad-btn" id="btn-down">&#9660;</div>
+    <div class="dpad-empty"></div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let CW, CH, GRID_W, GRID_H, CELL_W, CELL_H;
+
+function sizeCanvas() {
+  const maxW = Math.min(window.innerWidth - 16, 480);
+  CW = maxW;
+  CH = Math.round(maxW * (480/520));
+  GRID_W = 22;
+  GRID_H = Math.round(GRID_W * (CH/CW));
+  CELL_W = CW / GRID_W;
+  CELL_H = CH / GRID_H;
+  canvas.width = CW;
+  canvas.height = CH;
+  canvas.style.width = CW + 'px';
+  canvas.style.height = CH + 'px';
+  const ga = document.getElementById('game-area');
+  ga.style.width = CW + 'px';
+  ga.style.height = CH + 'px';
+  document.getElementById('topbar').style.maxWidth = CW + 'px';
+  document.getElementById('bottombar').style.maxWidth = CW + 'px';
+}
+sizeCanvas();
+
+const overlay = document.getElementById('overlay');
+const pauseOverlay = document.getElementById('pause-overlay');
+const roastEl = document.getElementById('roast');
+const subRoastEl = document.getElementById('sub-roast');
+const scoreBigEl = document.getElementById('score-big');
+const startBtn = document.getElementById('start-btn');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const pauseBtn = document.getElementById('pause-btn');
+const pauseIcon = document.getElementById('pause-icon');
+const playIcon = document.getElementById('play-icon');
+const pauseText = document.getElementById('pause-text');
+
+let snake, dir, nextDir, food, particles=[], score, best=0, gameLoop, running=false, paused=false, chosenLevel=1, internalLevel;
+const BASE_SPEEDS = {1:165, 2:110, 3:60};
+const LEVEL_ACCEL = {1:8, 2:12, 3:18};
+
+const ROASTS = [
+  ["death at {score}.", "genuinely impressive. not in a good way."],
+  ["score: {score}.", "almost as bad as your last PR review."],
+  ["fatal error.", "unhandled exception: skill issue at line {score}."],
+  ["you walked into a wall.", "we call that 'working as designed.'"],
+  ["{score} points.", "still higher than your test coverage."],
+  ["game over.", "have you considered project management?"],
+  ["rip.", "merged to main without testing. classic."],
+  ["{score} points.", "your rubber duck is embarrassed for you."],
+  ["terminated.", "exit code 1. as expected."],
+  ["you hit yourself.", "narcissistic AND bad at games."],
+  ["segfault.", "core dumped. so was your dignity."],
+  ["{score}.", "fewer than open tickets in your backlog."],
+  ["stack overflow.", "you've been on that site enough to know better."],
+  ["connection reset.", "by peer. even the snake gave up on you."],
+];
+
+const STAR_COUNT = 35;
+let stars = [];
+function initStars() {
+  stars = [];
+  for (let i=0;i<STAR_COUNT;i++) stars.push({x:Math.random()*CW, y:Math.random()*CH, r:Math.random()*1.1+0.3, a:Math.random()});
+}
+initStars();
+
+function randInt(n){return Math.floor(Math.random()*n);}
+function placeFood(){
+  let pos;
+  do{pos={x:randInt(GRID_W),y:randInt(GRID_H)};}
+  while(snake.some(s=>s.x===pos.x&&s.y===pos.y));
+  return pos;
+}
+function getSpeed(){return Math.max(40, BASE_SPEEDS[chosenLevel]-(internalLevel-1)*LEVEL_ACCEL[chosenLevel]);}
+
+function spawnParticles(x,y,color){
+  for(let i=0;i<8;i++){
+    const a=(Math.PI*2/8)*i+Math.random()*0.4;
+    const sp=2+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,color});
+  }
+}
+
+function drawBg(){
+  ctx.fillStyle='#0d1117';
+  ctx.fillRect(0,0,CW,CH);
+  stars.forEach(s=>{
+    const flicker=0.4+Math.sin(Date.now()/700+s.a*10)*0.3+s.a*0.3;
+    ctx.globalAlpha=flicker*0.55;
+    ctx.fillStyle='#c8d8f0';
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  ctx.strokeStyle='rgba(255,255,255,0.03)';
+  ctx.lineWidth=0.5;
+  for(let i=0;i<=GRID_W;i++){ctx.beginPath();ctx.moveTo(i*CELL_W,0);ctx.lineTo(i*CELL_W,CH);ctx.stroke();}
+  for(let j=0;j<=GRID_H;j++){ctx.beginPath();ctx.moveTo(0,j*CELL_H);ctx.lineTo(CW,j*CELL_H);ctx.stroke();}
+}
+
+const SNAKE_COLS=[[63,185,80],[57,167,72],[50,149,64],[44,132,57],[38,115,50],[32,99,44],[27,83,38]];
+
+function drawSnake(){
+  snake.forEach((seg,i)=>{
+    const t=i/Math.max(snake.length-1,1);
+    const ci=Math.min(Math.floor(t*SNAKE_COLS.length),SNAKE_COLS.length-1);
+    const [r,g,b]=SNAKE_COLS[ci];
+    const sh=i===0?1.5:2.5;
+    ctx.fillStyle=`rgb(${r},${g},${b})`;
+    ctx.shadowColor=i<3?`rgba(${r},${g},${b},0.5)`:'transparent';
+    ctx.shadowBlur=i<3?8:0;
+    ctx.beginPath();
+    ctx.roundRect(seg.x*CELL_W+sh,seg.y*CELL_H+sh,CELL_W-sh*2,CELL_H-sh*2,3);
+    ctx.fill();
+  });
+  ctx.shadowBlur=0;
+  if(snake.length>0){
+    const h=snake[0];
+    const cxh=h.x*CELL_W+CELL_W/2, cyh=h.y*CELL_H+CELL_H/2;
+    const ex=CELL_W*0.22, ey=CELL_H*0.22;
+    const offsets={
+      right:[[cxh+ex,cyh-ey],[cxh+ex,cyh+ey]],
+      left:[[cxh-ex,cyh-ey],[cxh-ex,cyh+ey]],
+      up:[[cxh-ex,cyh-ey],[cxh+ex,cyh-ey]],
+      down:[[cxh-ex,cyh+ey],[cxh+ex,cyh+ey]],
+    };
+    const eyes=offsets[dir]||offsets.right;
+    eyes.forEach(([ex2,ey2])=>{
+      ctx.fillStyle='rgba(255,255,255,0.92)';
+      ctx.beginPath();ctx.arc(ex2,ey2,2,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#111';
+      ctx.beginPath();ctx.arc(ex2+0.4,ey2+0.4,0.9,0,Math.PI*2);ctx.fill();
+    });
+  }
+}
+
+function drawFood(){
+  const t=Date.now()/300;
+  const pulse=Math.sin(t)*1.5;
+  const fx=food.x*CELL_W, fy=food.y*CELL_H;
+  const cx2=fx+CELL_W/2, cy2=fy+CELL_H/2;
+  const r=Math.min(CELL_W,CELL_H)/2-2+pulse*0.4;
+  ctx.shadowColor='#ff4444';ctx.shadowBlur=10+pulse;
+  ctx.fillStyle='#E24B4A';
+  ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.32)';
+  ctx.beginPath();ctx.ellipse(cx2-r*0.2,cy2-r*0.35,r*0.32,r*0.18,-Math.PI/5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#3B6D11';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(cx2+1,cy2-r+1);ctx.quadraticCurveTo(cx2+r*0.6,cy2-r-r*0.4,cx2+r*0.8,cy2-r+1);ctx.stroke();
+  ctx.shadowBlur=0;
+}
+
+function drawParticles(){
+  particles.forEach(p=>{ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,3*p.life,0,Math.PI*2);ctx.fill();});
+  ctx.globalAlpha=1;
+}
+
+function drawHUD(){
+  const sp=Math.round(((BASE_SPEEDS[chosenLevel]-getSpeed())/BASE_SPEEDS[chosenLevel])*100);
+  ctx.fillStyle='rgba(255,255,255,0.12)';
+  ctx.font=`10px monospace`;ctx.textAlign='left';
+  ctx.fillText('lvl '+internalLevel+'  spd +'+sp+'%',6,CH-6);
+}
+
+function draw(){drawBg();drawSnake();drawFood();drawParticles();drawHUD();}
+
+function updateParticles(){
+  particles=particles.filter(p=>p.life>0.05);
+  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vx*=0.9;p.vy*=0.9;p.life-=0.06;});
+}
+
+function tick(){
+  dir=nextDir;
+  const head={x:snake[0].x+(dir==='right'?1:dir==='left'?-1:0),y:snake[0].y+(dir==='down'?1:dir==='up'?-1:0)};
+  if(head.x<0||head.x>=GRID_W||head.y<0||head.y>=GRID_H||snake.some(s=>s.x===head.x&&s.y===head.y)){die();return;}
+  snake.unshift(head);
+  if(head.x===food.x&&head.y===food.y){
+    score++;scoreEl.textContent=score;
+    spawnParticles(food.x*CELL_W+CELL_W/2,food.y*CELL_H+CELL_H/2,'#ff6b6b');
+    internalLevel=Math.floor(score/5)+1;
+    food=placeFood();
+    clearInterval(gameLoop);gameLoop=setInterval(tick,getSpeed());
+  } else{snake.pop();}
+  updateParticles();draw();
+}
+
+function die(){
+  running=false;clearInterval(gameLoop);
+  if(score>best){best=score;bestEl.textContent=best;}
+  const r=ROASTS[randInt(ROASTS.length)];
+  roastEl.textContent=r[0].replace('{score}',score);
+  scoreBigEl.textContent=score+' pts';
+  subRoastEl.textContent=r[1].replace('{score}',score);
+  startBtn.textContent='[ try again, apparently ]';
+  setPauseUI(false,false);
+  overlay.style.display='flex';draw();
+}
+
+function setPauseUI(isRunning,isPaused){
+  pauseBtn.disabled=!isRunning;pauseBtn.style.opacity=isRunning?'1':'0.4';
+  if(isPaused){pauseIcon.style.display='none';playIcon.style.display='block';pauseText.textContent='resume';}
+  else{pauseIcon.style.display='block';playIcon.style.display='none';pauseText.textContent='pause';}
+  pauseOverlay.style.display=isPaused?'flex':'none';
+}
+
+function togglePause(){
+  if(!running)return;paused=!paused;
+  if(paused){clearInterval(gameLoop);}else{gameLoop=setInterval(tick,getSpeed());}
+  setPauseUI(true,paused);draw();
+}
+
+function startGame(){
+  const sx=Math.floor(GRID_W/2), sy=Math.floor(GRID_H/2);
+  snake=[{x:sx,y:sy},{x:sx-1,y:sy},{x:sx-2,y:sy}];
+  dir='right';nextDir='right';score=0;internalLevel=1;particles=[];
+  scoreEl.textContent=0;food=placeFood();running=true;paused=false;
+  roastEl.textContent='';scoreBigEl.textContent='';subRoastEl.textContent='';
+  startBtn.textContent='[ start game ]';
+  overlay.style.display='none';setPauseUI(true,false);
+  clearInterval(gameLoop);gameLoop=setInterval(tick,getSpeed());draw();
+}
+
+startBtn.addEventListener('click',startGame);
+pauseBtn.addEventListener('click',togglePause);
+
+document.querySelectorAll('.lvl-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.lvl-btn').forEach(b=>b.classList.remove('active','l1','l2','l3'));
+    btn.classList.add('active','l'+btn.dataset.lvl);
+    chosenLevel=parseInt(btn.dataset.lvl);
+  });
+});
+
+function handleDir(nd){
+  if(!running||paused)return;
+  const opp={up:'down',down:'up',left:'right',right:'left'};
+  if(nd!==opp[dir])nextDir=nd;
+}
+
+document.getElementById('btn-up').addEventListener('click',()=>handleDir('up'));
+document.getElementById('btn-down').addEventListener('click',()=>handleDir('down'));
+document.getElementById('btn-left').addEventListener('click',()=>handleDir('left'));
+document.getElementById('btn-right').addEventListener('click',()=>handleDir('right'));
+document.getElementById('dpad-center').addEventListener('click',togglePause);
+
+document.addEventListener('keydown',e=>{
+  if(e.key===' '||e.key==='p'||e.key==='P'){e.preventDefault();togglePause();return;}
+  if(!running||paused)return;
+  const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
+  const nd=map[e.key];if(!nd)return;
+  handleDir(nd);
+  if(e.key.startsWith('Arrow'))e.preventDefault();
+});
+
+let touchStartX=0,touchStartY=0;
+canvas.addEventListener('touchstart',e=>{
+  touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;e.preventDefault();
+},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-touchStartX;
+  const dy=e.changedTouches[0].clientY-touchStartY;
+  if(Math.abs(dx)<10&&Math.abs(dy)<10)return;
+  if(Math.abs(dx)>Math.abs(dy)){handleDir(dx>0?'right':'left');}
+  else{handleDir(dy>0?'down':'up');}
+  e.preventDefault();
+},{passive:false});
+
+function animLoop(){if(running&&!paused){updateParticles();draw();}requestAnimationFrame(animLoop);}
+animLoop();setPauseUI(false,false);draw();
+</script>
